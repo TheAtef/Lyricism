@@ -131,7 +131,7 @@ def get_album(link):
     for track in n:
         c = re.split("\s", track)[0][:-1]
         album_kb.row(types.InlineKeyboardButton(text=str(track),callback_data='album'+str(c)))
-    album_kb.row(types.InlineKeyboardButton(text='Done',callback_data='album_done'))
+    album_kb.row(types.InlineKeyboardButton(text='Done',callback_data='done_album'))
 
     return album_text, album_kb
 
@@ -313,18 +313,18 @@ def tbot():
                 bot.send_chat_action(call.message.chat.id, action='typing')
                 album_text, album_kb = get_album(links[call_num])
                 bot.send_message(chat_id=call.message.chat.id, text= album_text, reply_markup=album_kb)
-            if call.data == 'album_done':
+            if call.data == 'done_album':
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
             if call.data == 'album' + call_data[5:]:
                 bot.send_chat_action(call.message.chat.id, action='typing')
                 a = int(call_data[5:]) - 1
                 lyrics = get_lyrics(y[a])
-                lyricsfr = n[a] + ' | Lyrics:\n\n' + lyrics
-                if len(lyricsfr) > 4096:
-                    for x in range(0, len(lyricsfr), 4096):
-                        bot.send_message(chat_id=call.message.chat.id, text=lyricsfr[x:x+4096])
+                lyrics_alb = n[a] + ' | Lyrics:\n\n' + lyrics
+                if len(lyrics_alb) > 4096:
+                    for x in range(0, len(lyrics_alb), 4096):
+                        bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb[x:x+4096])
                 else:
-                    bot.send_message(chat_id=call.message.chat.id, text=lyricsfr)
+                    bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb)
 
             if call.data == 'click2':
                 global kb_tanslate
