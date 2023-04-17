@@ -4,3 +4,4 @@ googletrans==4.0.0-rc1
 pyTelegramBotAPI==4.10.0
 requests==2.28.2
 regex
+--upgrade pip
