@@ -28,26 +28,32 @@ bot = telebot.TeleBot(API_KEY)
 server()
 
 def get_url(name):
-    url = BASE + name.replace(" ", "%20")
-    return url
+    if "/from_lyric" in name:
+        index = 2
+        url = BASE + name.replace("/from_lyric ", "").replace(" ", "%20")
+    else:
+        index = 1
+        url = BASE + name.replace(" ", "%20")
+    return url, index
 
 def get_url_ar(name_ar):
     url_ar = BASE_AR + name_ar
     return url_ar
 
 def first_page(name):
-    r = requests.get(get_url(name), headers=headers)
+    url, index = get_url(name)
+    r = requests.get(url, headers=headers)
     if r.status_code == 200:
         soup = bs(r.content, features='html.parser')
         data = soup.text
         parsed_json = json.loads(data)
         global searchq, links, photos, results_counter 
         searchq, links, photos = ([] for i in range(3))
-        results_counter = len(parsed_json['response']['sections'][1]['hits'])
+        results_counter = len(parsed_json['response']['sections'][index]['hits'])
         for x in range(results_counter):
-            link = parsed_json['response']['sections'][1]['hits'][x]['result']['url']
-            info = parsed_json['response']['sections'][1]['hits'][x]['result']['full_title'].replace('by', '-')
-            photo = parsed_json['response']['sections'][1]['hits'][x]['result']['song_art_image_url']
+            link = parsed_json['response']['sections'][index]['hits'][x]['result']['url']
+            info = parsed_json['response']['sections'][index]['hits'][x]['result']['full_title'].replace('by', '-')
+            photo = parsed_json['response']['sections'][index]['hits'][x]['result']['song_art_image_url']
             links.append(link)
             searchq.append(info)
             photos.append(photo)
@@ -56,12 +62,17 @@ def first_page(name):
         markup = types.InlineKeyboardMarkup()
         ar_button = types.InlineKeyboardButton(text='ابحث عن أغانٍ عربية', callback_data='ar_result')
         close_button = types.InlineKeyboardButton(text='Close', callback_data='result_no')
-        nmarkup = types.InlineKeyboardMarkup([[ar_button], [close_button]])
+        if index == 1:
+            nmarkup = types.InlineKeyboardMarkup([[ar_button], [close_button]])
+        elif index == 2:
+            nmarkup = types.InlineKeyboardMarkup()
+            nmarkup.add(close_button)
         count = 0
         for value in searchq:
             markup.add(types.InlineKeyboardButton(text=value,callback_data='result'+str(count)))
             count += 1
-        markup.add(ar_button)
+        if index == 1:
+            markup.add(ar_button)
         markup.add(close_button)
 
     else:
@@ -195,6 +206,7 @@ def tbot():
         smsg = "Lyricism is UP!\nSend me the name of a song and I will get its lyrics for you <3\n(You can send with artist name for more accuarcy)."
         bot.reply_to(message, smsg)
         
+        
     @bot.message_handler(commands=['contact'])
     def contact(message):
         bot.send_chat_action(message.chat.id, action='typing')
@@ -207,7 +219,16 @@ def tbot():
         smsg = "Thanks for consedring donating!\nHere is my Buy Me a Coffee link:\nhttps://www.buymeacoffee.com/TheAtef"
         bot.reply_to(message, smsg, disable_web_page_preview=True)
 
-    @bot.message_handler()
+    @bot.message_handler(commands=['from_lyric'])
+    def from_lyric(message):
+        bot.send_chat_action(message.chat.id, action='typing')
+        if message.text == "/from_lyric":
+            smsg = "Write the command with the lyrics you remember to find the song.\nExample:\n/from_lyric yesterday I woke up sucking a lemon"
+            bot.reply_to(message, smsg)
+        else:
+            reply(message)
+
+    @bot.message_handler(commands=None)
     def reply(message):
         global m
         m = message
@@ -231,7 +252,6 @@ def tbot():
         date = datetime.now()
         data = f'User id: {userId}\nUsermae: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
         bot.send_message(chat_id=CHATID, text=data)
-
 
     @bot.callback_query_handler(func=lambda call: True)
     def callback_data(call):
