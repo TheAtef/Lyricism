@@ -88,8 +88,7 @@ def get_lyrics(link):
         lyrics_raw.find("div", class_=re.compile("^LyricsHeader")).decompose()
         lyrics_raw.find("div", class_=re.compile("^Lyrics__Footer")).decompose()
         try:
-            lyrics_raw.find("aside", class_=re.compile("^RecommendedSong")).decompose()
-            lyrics_raw.find("div", class_=re.compile("^InreadContainer__Container")).decompose()
+            lyrics_raw.find("div", class_=re.compile("^RightSidebar__Container")).decompose()
         except:
             pass
     except:
