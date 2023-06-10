@@ -2,6 +2,8 @@ import os
 import telebot
 from telebot import types
 from bs4 import BeautifulSoup as bs
+from lyricy import Lyricy
+import random
 import requests
 import json
 import re
@@ -19,7 +21,8 @@ headers_ar = {
 }
 
 API_KEY = os.environ.get('API_KEY')
-BASE = os.environ.get('BASE')
+BASE_LYRIC = os.environ.get('BASE_LYRIC')
+BASE_SONG = os.environ.get('BASE_SONG')
 BASE_AR = os.environ.get('BASE_AR')
 CHATID = os.environ.get('CHATID')
 
@@ -27,21 +30,25 @@ bot = telebot.TeleBot(API_KEY)
 
 server()
 
-def get_url(name):
+def get_url(name, page):
     if "/from_lyric" in name:
         index = 2
-        url = BASE + name.replace("/from_lyric ", "").replace(" ", "%20")
+        url = BASE_LYRIC + name.replace("/from_lyric ", "").replace(" ", "%20")
+        if page == 2:
+            url = url.replace("page=1", "page=2")
     else:
         index = 1
-        url = BASE + name.replace(" ", "%20")
+        url = BASE_SONG + name.replace(" ", "%20")
+        if page == 2:
+            url = url.replace("page=1", "page=2")
     return url, index
 
 def get_url_ar(name_ar):
     url_ar = BASE_AR + name_ar
     return url_ar
 
-def first_page(name):
-    url, index = get_url(name)
+def first_page(name, page):
+    url, index = get_url(name, page)
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
         soup = bs(r.content, features='html.parser')
@@ -49,29 +56,35 @@ def first_page(name):
         parsed_json = json.loads(data)
         global searchq, links, photos, results_counter 
         searchq, links, photos = ([] for i in range(3))
-        results_counter = len(parsed_json['response']['sections'][index]['hits'])
+        results_counter = len(parsed_json['response']['sections'][0]['hits'])
         for x in range(results_counter):
-            link = parsed_json['response']['sections'][index]['hits'][x]['result']['url']
-            info = parsed_json['response']['sections'][index]['hits'][x]['result']['full_title'].replace('by', '-')
-            photo = parsed_json['response']['sections'][index]['hits'][x]['result']['song_art_image_url']
+            link = parsed_json['response']['sections'][0]['hits'][x]['result']['url']
+            info = parsed_json['response']['sections'][0]['hits'][x]['result']['full_title'].replace('by', '-')
+            photo = parsed_json['response']['sections'][0]['hits'][x]['result']['song_art_image_url']
             links.append(link)
             searchq.append(info)
             photos.append(photo)
         
         #Serch kb:
         markup = types.InlineKeyboardMarkup()
+        more = types.InlineKeyboardButton(text='➡️', callback_data='more')
+        less = types.InlineKeyboardButton(text='⬅️', callback_data='less')
         ar_button = types.InlineKeyboardButton(text='ابحث عن أغانٍ عربية', callback_data='ar_result')
         close_button = types.InlineKeyboardButton(text='Close', callback_data='result_no')
         if index == 1:
             nmarkup = types.InlineKeyboardMarkup([[ar_button], [close_button]])
         elif index == 2:
-            nmarkup = types.InlineKeyboardMarkup()
-            nmarkup.add(close_button)
+            nmarkup = types.InlineKeyboardMarkup([[close_button]])
         count = 0
         for value in searchq:
             markup.add(types.InlineKeyboardButton(text=value,callback_data='result'+str(count)))
             count += 1
-        if index == 1:
+        if results_counter == 10:
+            if page == 1 or page == 0:
+                markup.add(more)
+        if page == 2:
+            markup.add(less)
+        if index == 1 and page != 2:
             markup.add(ar_button)
         markup.add(close_button)
 
@@ -228,30 +241,65 @@ def tbot():
         else:
             reply(message)
 
+    @bot.message_handler(commands=['lrc'])
+    def lrc(message):
+        bot.send_chat_action(message.chat.id, action='typing')
+        if message.text == "/lrc":
+            smsg = "Write the command with the name of the song which you want the .lrc file.\nExample:\n/lrc exit music"
+            bot.reply_to(message, smsg)
+        else:
+            global m_lrc
+            global results
+            m_lrc = message
+            que = message.text.replace("/lrc ", "")
+            ly = Lyricy()
+            results = ly.search(que)
+            lrc_markup = types.InlineKeyboardMarkup()
+            count = 0
+            for x in range(len(results)):
+                tit = results[x].title
+                titless = tit.split("LRC", 1)[0]
+                if titless == " No result found":
+                    break
+                lrc_markup.add(types.InlineKeyboardButton(text=titless,callback_data='lrc'+str(count)))
+                count += 1
+            lrc_markup.add(types.InlineKeyboardButton(text='Close', callback_data='close_lrc'))
+            if count == 0:
+                bot.send_message(message.chat.id, "Sorry, no result found.", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
+            else:
+                bot.send_message(message.chat.id, "Choose your song: ", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
+
     @bot.message_handler(commands=None)
-    def reply(message):
+    def reply(message, page=1):
         global m
         m = message
-        bot.send_chat_action(message.chat.id, action='typing')
+        if page == 1:
+            bot.send_chat_action(message.chat.id, action='typing')
+        global name
         name = message.text
         global name_ar
         name_ar = message.text
-        markup, nmarkup = first_page(name)
+        markup, nmarkup = first_page(name, page)
 
         #Sending searchq:
         if results_counter != 0:
-            bot.reply_to(message, 'Choose your song:', reply_markup=markup)
+            if page == 1:
+                global rep
+                rep = bot.reply_to(message, 'Choose your song:', reply_markup=markup)
+            elif page == 2 or page == 0:
+                bot.edit_message_reply_markup(message.chat.id, rep.message_id, reply_markup=markup)
         else:
             bot.reply_to(message, 'Sorry, no matches.', reply_markup=nmarkup)
         
         #Sending data:
-        userId = message.chat.id
-        nameUser = str(message.chat.first_name) + ' ' + str(message.chat.last_name)
-        username = message.chat.username
-        text = message.text
-        date = datetime.now()
-        data = f'User id: {userId}\nUsermae: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
-        bot.send_message(chat_id=CHATID, text=data)
+        if page == 1:
+            userId = message.chat.id
+            nameUser = str(message.chat.first_name) + ' ' + str(message.chat.last_name)
+            username = message.chat.username
+            text = message.text
+            date = datetime.now()
+            data = f'User id: {userId}\nUsermae: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
+            bot.send_message(chat_id=CHATID, text=data)
 
     @bot.callback_query_handler(func=lambda call: True)
     def callback_data(call):
@@ -261,8 +309,24 @@ def tbot():
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 bot.delete_message(chat_id=call.message.chat.id, message_id=m.message_id)
 
+            if call.data == 'close_lrc':
+                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+                bot.delete_message(chat_id=call.message.chat.id, message_id=m_lrc.message_id)
+
+            lrc_data = call.data[3:]
+            if call.data == 'lrc' + lrc_data:
+                slc = results[int(lrc_data)]
+                slc.fetch()
+                n = str(random.randint(0,19))
+                lrc_name = "Lyricism" + n + ".lrc"
+                with open(lrc_name, "w", encoding="utf-8") as f:
+                    f.write(slc.lyrics)
+                bot.send_chat_action(call.message.chat.id, "upload_document")
+                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+                bot.send_document(call.message.chat.id, open(lrc_name, 'rb'), m_lrc.message_id)
+
+
             call_data = call.data
-            
             global lyricsfr
             if call.data == 'result' + call_data[-1]:
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
@@ -295,6 +359,11 @@ def tbot():
                     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 else:
                     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=lyricsfr)
+
+            if call.data == 'more':
+                reply(m, 2)
+            if call.data == 'less':
+                reply(m, 0)
 
             if call.data == 'ar_result':
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
