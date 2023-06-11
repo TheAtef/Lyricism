@@ -358,7 +358,7 @@ def tbot():
                 if len(lyricsfr) > 4096:
                     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 else:
-                    bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=lyricsfr)
+                    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=None)
 
             if call.data == 'more':
                 reply(m, 2)
@@ -423,7 +423,7 @@ def tbot():
                 button2_4 = types.InlineKeyboardButton(text='Translate to Spanish', callback_data='click2_4')
                 button2_0 = types.InlineKeyboardButton(text='Go back', callback_data='click2_0')
                 kb_tanslate = types.InlineKeyboardMarkup([[button2_1, button2_2], [button2_3, button2_4], [button2_0]])
-                bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=lyricsfr, reply_markup=kb_tanslate)
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=kb_tanslate)
             translator = Translator()
             if call.data == 'click2_1':
                 bot.send_chat_action(call.message.chat.id, action='typing')
@@ -442,7 +442,7 @@ def tbot():
                 es = translator.translate(lyricsfr, dest='es').text
                 bot.send_message(chat_id=call.message.chat.id, text="Spanish translation:\n\n" + es)
             if call.data == 'click2_0':
-                bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=lyricsfr, reply_markup=keyboard)
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=keyboard)
     print('Bot is running...')
     bot.infinity_polling()
 
