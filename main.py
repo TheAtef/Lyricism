@@ -3,7 +3,6 @@ import telebot
 from telebot import types
 from bs4 import BeautifulSoup as bs
 from lyricy import Lyricy
-import random
 import requests
 import json
 import re
@@ -213,6 +212,15 @@ def AR1(sId, pId, infos):
 
 
 def tbot():
+    def chat(message):
+        userId = message.chat.id
+        nameUser = str(message.chat.first_name) + ' ' + str(message.chat.last_name)
+        username = message.chat.username
+        text = message.text
+        date = datetime.now()
+        data = f'User id: {userId}\nUsermae: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
+        bot.send_message(chat_id=CHATID, text=data)
+
     @bot.message_handler(commands=['start'])
     def start(message):
         bot.send_chat_action(message.chat.id, action='typing')
@@ -268,6 +276,7 @@ def tbot():
                 bot.send_message(message.chat.id, "Sorry, no result found.", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
             else:
                 bot.send_message(message.chat.id, "Choose your song: ", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
+        chat(message)
 
     @bot.message_handler(commands=None)
     def reply(message, page=1):
@@ -293,13 +302,7 @@ def tbot():
         
         #Sending data:
         if page == 1:
-            userId = message.chat.id
-            nameUser = str(message.chat.first_name) + ' ' + str(message.chat.last_name)
-            username = message.chat.username
-            text = message.text
-            date = datetime.now()
-            data = f'User id: {userId}\nUsermae: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
-            bot.send_message(chat_id=CHATID, text=data)
+            chat(message)
 
     @bot.callback_query_handler(func=lambda call: True)
     def callback_data(call):
@@ -317,8 +320,7 @@ def tbot():
             if call.data == 'lrc' + lrc_data:
                 slc = results[int(lrc_data)]
                 slc.fetch()
-                n = str(random.randint(0,19))
-                lrc_name = "Lyricism" + n + ".lrc"
+                lrc_name = slc.title.split("LRC", 1)[0] + ".lrc"
                 with open(lrc_name, "w", encoding="utf-8") as f:
                     f.write(slc.lyrics)
                 bot.send_chat_action(call.message.chat.id, "upload_document")
