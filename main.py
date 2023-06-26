@@ -1,4 +1,5 @@
 import os
+import time
 import telebot
 from telebot import types
 from bs4 import BeautifulSoup as bs
@@ -446,7 +447,14 @@ def tbot():
             if call.data == 'click2_0':
                 bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=keyboard)
     print('Bot is running...')
-    bot.infinity_polling()
+    while True:
+        try:
+            bot.infinity_polling()
+        except Exception as ex:
+            print("Error: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            print(ex)
+            time.sleep(10)
+            bot.infinity_polling()
 
 if __name__ == "__main__":
     tbot()
