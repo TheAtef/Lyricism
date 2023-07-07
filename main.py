@@ -54,16 +54,18 @@ def first_page(name, page):
         soup = bs(r.content, features='html.parser')
         data = soup.text
         parsed_json = json.loads(data)
-        global searchq, links, photos, results_counter 
-        searchq, links, photos = ([] for i in range(3))
+        global searchq, links, photos, results_counter, album_photos
+        searchq, links, photos, album_photos = ([] for i in range(4))
         results_counter = len(parsed_json['response']['sections'][0]['hits'])
         for x in range(results_counter):
             link = parsed_json['response']['sections'][0]['hits'][x]['result']['url']
             info = parsed_json['response']['sections'][0]['hits'][x]['result']['full_title'].replace('by', '-')
             photo = parsed_json['response']['sections'][0]['hits'][x]['result']['song_art_image_url']
+            album_photo = parsed_json['response']['sections'][0]['hits'][x]['result']['header_image_url']
             links.append(link)
             searchq.append(info)
             photos.append(photo)
+            album_photos.append(album_photo)
         
         #Serch kb:
         markup = types.InlineKeyboardMarkup()
@@ -148,7 +150,7 @@ def get_album(link):
                     n.append(li.div.get_text())
                     y.append(link)
             
-            album_text = album_name + ' tracklist:\n'
+            album_text = album_name
     except:
         album_text = 'Sorry, couldn\'t find data.'
     album_kb = types.InlineKeyboardMarkup()
@@ -373,10 +375,11 @@ def tbot():
                 bot.send_chat_action(call.message.chat.id, action='typing')
                 #Ar_search kb:
                 AR(get_url_ar(name_ar))
+                ar_markup = types.InlineKeyboardMarkup()
                 if ar_counter == 0:
-                    bot.send_message(chat_id=call.message.chat.id, text='عذراً، لم يتم العثور على نتائج')
+                    ar_markup.add(types.InlineKeyboardButton(text='إغلاق', callback_data='result_no'))
+                    bot.send_message(chat_id=call.message.chat.id, text='.عذراً، لم يتم العثور على نتائج', reply_to_message_id=m.message_id, reply_markup=ar_markup)
                 else:
-                    ar_markup = types.InlineKeyboardMarkup()
                     counter = 0
                     for value in infos_ar:
                         ar_markup.add(types.InlineKeyboardButton(text=value,callback_data='ar_result'+str(counter)))
@@ -399,14 +402,14 @@ def tbot():
 
             if call.data == 'click0':
                 bot.send_chat_action(call.message.chat.id, action='typing')
-                bot.send_message(chat_id=call.message.chat.id, text='About the song:\n' + get_about(links[call_num]))
+                bot.send_message(chat_id=call.message.chat.id, text='About the song:\n' + get_about(links[call_num]), reply_to_message_id=call.message.message_id)
             
             if call.data == 'click1':
                 bot.send_chat_action(call.message.chat.id, action='typing')
                 album_text, album_kb = get_album(links[call_num])
-                bot.send_message(chat_id=call.message.chat.id, text= album_text, reply_markup=album_kb)
+                bot.send_photo(chat_id=call.message.chat.id, photo=album_photos[call_num], caption= album_text, reply_markup=album_kb, reply_to_message_id=call.message.message_id)
             if call.data == 'done_album':
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+                bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id)
             if call.data == 'album' + call_data[5:]:
                 bot.send_chat_action(call.message.chat.id, action='typing')
                 a = int(call_data[5:]) - 1
@@ -414,9 +417,9 @@ def tbot():
                 lyrics_alb = n[a] + ' | Lyrics:\n\n' + lyrics
                 if len(lyrics_alb) > 4096:
                     for x in range(0, len(lyrics_alb), 4096):
-                        bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb[x:x+4096])
+                        bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb[x:x+4096], reply_to_message_id=call.message.message_id)
                 else:
-                    bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb)
+                    bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb, reply_to_message_id=call.message.message_id)
 
             if call.data == 'click2':
                 global kb_tanslate
