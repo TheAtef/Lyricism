@@ -1,7 +1,6 @@
-httpx==0.24.1
 beautifulsoup4==4.11.1
 Flask==2.2.3
-googletrans==4.0.0-rc1
+googletrans-py
 pyTelegramBotAPI==4.10.0
 requests==2.28.1
 lyricy==1.4
