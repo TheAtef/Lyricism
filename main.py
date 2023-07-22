@@ -51,7 +51,7 @@ def first_page(name, page):
     url, index = get_url(name, page)
     r = requests.get(url, headers=headers)
     if r.status_code == 200:
-        soup = bs(r.content, features='html.parser')
+        soup = bs(r.content, features='lxml')
         data = soup.text
         parsed_json = json.loads(data)
         global searchq, links, photos, results_counter, album_photos
@@ -97,7 +97,7 @@ def first_page(name, page):
 
 def get_lyrics(link):
     r_lyrics = requests.get(link, headers=headers)
-    soup_lyrics = bs(r_lyrics.content, features='html.parser')
+    soup_lyrics = bs(r_lyrics.content, features='lxml')
     try:
         lyrics_raw = soup_lyrics.find("div", class_=re.compile("^lyrics$|Lyrics__Root"))
         lyrics_raw.find("div", class_=re.compile("^LyricsHeader")).decompose()
@@ -110,14 +110,14 @@ def get_lyrics(link):
         if lyrics_raw == None:
             lyrics_raw = soup_lyrics.find('div', class_=re.compile("^LyricsPlaceholder__Message"))
     lyrics_fixed = str(lyrics_raw).replace('<br/>', '\n')
-    convert = bs(lyrics_fixed, features='html.parser')
+    convert = bs(lyrics_fixed, features='lxml')
     lyrics = convert.text
 
     return lyrics
 
 def get_about(link):
     r_about = requests.get(link, headers=headers)
-    soup_about = bs(r_about.content, features='html.parser')
+    soup_about = bs(r_about.content, features='lxml')
     try:
         about = soup_about.find('div', class_= re.compile("^SongDescription__Content")).get_text()
         if about == None:
@@ -132,7 +132,7 @@ def get_album(link):
     n=[]
     y=[]
     r_album = requests.get(link, headers=headers)
-    soup_album = bs(r_album.content, features='html.parser')
+    soup_album = bs(r_album.content, features='lxml')
     try:
         album_name = soup_album.find('a', class_=re.compile("^PrimaryAlbum__Title")).get_text()
         album = soup_album.find('ol', class_= re.compile("^AlbumTracklist__Container"))
@@ -206,7 +206,7 @@ def AR1(sId, pId, infos):
     pic_url = 'https://angartwork.anghcdn.co/?id=' + pId
     lyrics_url = 'https://kalimat.anghami.com/lyrics/' + sId
     ar_lyrics_req = requests.get(lyrics_url, headers=headers)
-    soup_ar = bs(ar_lyrics_req.content, 'html.parser')
+    soup_ar = bs(ar_lyrics_req.content, 'lxml')
     try:
         ar_lryics = infos + ' | كلمات:\n\n' + soup_ar.find('pre', class_=re.compile("^lyrics-body")).text
     except:
