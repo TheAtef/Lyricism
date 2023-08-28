@@ -453,11 +453,12 @@ def tbot():
     while True:
         try:
             bot.infinity_polling()
-        except Exception as ex:
-            print("Error: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            print(ex)
+        except:
             time.sleep(10)
-            bot.infinity_polling()
 
 if __name__ == "__main__":
-    tbot()
+    while True:
+        try:
+            tbot()
+        except:
+            pass
