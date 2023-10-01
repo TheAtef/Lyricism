@@ -101,7 +101,7 @@ def get_lyrics(link):
     try:
         lyrics_raw = soup_lyrics.find("div", class_=re.compile("^lyrics$|Lyrics__Root"))
         lyrics_raw.find("div", class_=re.compile("^LyricsHeader")).decompose()
-        lyrics_raw.find("div", class_=re.compile("^Lyrics__Footer")).decompose()
+        lyrics_raw.find("div", class_=re.compile("^LyricsFooter__Container")).decompose()
         try:
             lyrics_raw.find("div", class_=re.compile("^RightSidebar__Container")).decompose()
         except:
