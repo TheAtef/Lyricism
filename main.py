@@ -9,6 +9,9 @@ import json
 import re
 from datetime import datetime
 from googletrans import Translator
+from pydeezer import Deezer
+from pydeezer.constants import track_formats
+
 from server import server
 
 headers = {
@@ -25,6 +28,48 @@ BASE_LYRIC = os.environ.get('BASE_LYRIC')
 BASE_SONG = os.environ.get('BASE_SONG')
 BASE_AR = os.environ.get('BASE_AR')
 CHATID = os.environ.get('CHATID')
+ARL = os.environ.get('ARL')
+
+class MyDeezer:
+    deezer = Deezer(arl=ARL)
+    user_info = deezer.user
+    
+    def __init__(self, user_text):
+        self.user_text = user_text
+        self.songs = []
+        self.ids = []
+        self.Dmarkup = types.InlineKeyboardMarkup()
+
+    def search(self):
+        search = self.deezer.search_tracks(self.user_text, limit = 10)
+        for item in search:
+            self.songs.append(f"{item['title']} - {item['artist']['name']}")
+            self.ids.append(item['id'])
+        self.keyboard(self.songs)
+    
+    def keyboard(self, songs):
+        close_button = types.InlineKeyboardButton(text='Close', callback_data='result_no')
+        count = 0
+        for value in songs:
+            print(value)
+            self.Dmarkup.add(types.InlineKeyboardButton(text=value, callback_data='track'+str(count)))
+            count += 1
+        self.Dmarkup.add(close_button)
+        if count != 0:
+            bot.reply_to(dl, 'Choose your song:', reply_markup = song.Dmarkup)
+        else:
+                bot.reply_to(dl, 'Sorry, no results found.', reply_markup = song.Dmarkup)
+
+    def option(self, num):
+        track = self.deezer.get_track(song.ids[num])
+        name = track['info']['DATA']['SNG_TITLE'] 
+        track["download"](download_dir ='Songs\\temp', quality=track_formats.MP3_320, )
+        bot.send_chat_action(dl.chat.id, action='upload_audio')
+        bot.send_audio(dl.chat.id, open('Songs\\temp\\'+ name + '.mp3', 'rb'))
+        try:
+            bot.send_document(dl.chat.id, open('Songs\\temp\\' + name +'.lrc', 'rb'))
+        except:
+            pass
 
 bot = telebot.TeleBot(API_KEY)
 
@@ -221,27 +266,43 @@ def tbot():
         username = message.chat.username
         text = message.text
         date = datetime.now()
-        data = f'User id: {userId}\nUsermae: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
+        data = f'User id: {userId}\nUsername: @{username}\nName: {nameUser}\nText: {text}\nDate: {date}'
         bot.send_message(chat_id=CHATID, text=data)
 
     @bot.message_handler(commands=['start'])
     def start(message):
         bot.send_chat_action(message.chat.id, action='typing')
+        chat(message)
         smsg = "Lyricism is UP!\nSend me the name of a song and I will get its lyrics for you <3\n(You can send with artist name for more accuarcy)."
         bot.reply_to(message, smsg)
-        
         
     @bot.message_handler(commands=['contact'])
     def contact(message):
         bot.send_chat_action(message.chat.id, action='typing')
+        chat(message)
         smsg = "Contact bot creator to report a bug or suggest a feature:\n@TheAtef\nhttps://t.me/TheAtef"
         bot.reply_to(message, smsg, disable_web_page_preview=True)
 
     @bot.message_handler(commands=['donate'])
     def donate(message):
+        chat(message)
         bot.send_chat_action(message.chat.id, action='typing')
-        smsg = "Thanks for consedring donating!\nHere is my Buy Me a Coffee link:\nhttps://www.buymeacoffee.com/TheAtef"
+        smsg = "Thanks for considering donating!\nHere is my Buy Me a Coffee link:\nhttps://www.buymeacoffee.com/TheAtef"
         bot.reply_to(message, smsg, disable_web_page_preview=True)
+
+    @bot.message_handler(commands=['download'])
+    def download(message):
+        bot.send_chat_action(message.chat.id, action='typing')
+        if message.text == "/download":
+            smsg = "Write the command with the song name to download it.\nExample:\n/download a different age\nNote: you can add the artist name for more accuracy."
+            bot.reply_to(message, smsg)
+        else:
+            global dl, song
+            dl = message
+            text = dl.text.removeprefix('/download')
+            song = MyDeezer(text)
+            song.search()
+        chat(message)
 
     @bot.message_handler(commands=['from_lyric'])
     def from_lyric(message):
@@ -262,7 +323,7 @@ def tbot():
             global m_lrc
             global results
             m_lrc = message
-            que = message.text.replace("/lrc ", "")
+            que = message.text.removeprefix("/lrc ")
             ly = Lyricy()
             results = ly.search(que)
             lrc_markup = types.InlineKeyboardMarkup()
@@ -270,13 +331,13 @@ def tbot():
             for x in range(len(results)):
                 tit = results[x].title
                 titless = tit.split("LRC", 1)[0]
-                if titless == " No result found":
+                if titless == " No results found":
                     break
                 lrc_markup.add(types.InlineKeyboardButton(text=titless,callback_data='lrc'+str(count)))
                 count += 1
-            lrc_markup.add(types.InlineKeyboardButton(text='Close', callback_data='close_lrc'))
+            lrc_markup.add(types.InlineKeyboardButton(text='Close', callback_data='result_no'))
             if count == 0:
-                bot.send_message(message.chat.id, "Sorry, no result found.", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
+                bot.send_message(message.chat.id, "Sorry, no results found.", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
             else:
                 bot.send_message(message.chat.id, "Choose your song: ", reply_to_message_id= message.message_id, reply_markup=lrc_markup)
         chat(message)
@@ -313,11 +374,17 @@ def tbot():
         if call.message:
             if call.data == 'result_no':
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-                bot.delete_message(chat_id=call.message.chat.id, message_id=m.message_id)
-
-            if call.data == 'close_lrc':
-                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-                bot.delete_message(chat_id=call.message.chat.id, message_id=m_lrc.message_id)
+                try: 
+                    bot.delete_message(chat_id=call.message.chat.id, message_id=m.message_id)
+                except NameError:
+                    try:
+                        bot.delete_message(chat_id=call.message.chat.id, message_id=dl.message_id)
+                    except:
+                        bot.delete_message(chat_id=call.message.chat.id, message_id=m_lrc.message_id)    
+                    finally:
+                        pass                
+                finally:
+                    pass 
 
             lrc_data = call.data[3:]
             if call.data == 'lrc' + lrc_data:
@@ -332,6 +399,15 @@ def tbot():
 
 
             call_data = call.data
+
+            if call.data == 'track' + str(call_data[5:]):
+                song.option(int(call_data[5:]))
+                bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+                try:
+                    bot.delete_message(chat_id=call.message.chat.id, message_id=dl.message_id)
+                except:
+                    pass
+
             global lyricsfr
             if call.data == 'result' + call_data[-1]:
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
