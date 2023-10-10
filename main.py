@@ -404,12 +404,12 @@ def tbot():
 
             if call.data == 'track' + str(call_data[5:]):
                 bot.send_chat_action(call.message.chat.id, action='typing')
-                song.option(int(call_data[5:]))
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 try:
                     bot.delete_message(chat_id=call.message.chat.id, message_id=dl.message_id)
                 except:
                     pass
+                song.option(int(call_data[5:]))
 
             global lyricsfr
             if call.data == 'result' + call_data[-1]:
