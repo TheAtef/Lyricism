@@ -63,6 +63,8 @@ class MyDeezer:
     def option(self, num):
         track = self.deezer.get_track(song.ids[num])
         name = track['info']['DATA']['SNG_TITLE'] 
+        if not os.path.exists('/Songs'):
+            os.makedirs('/Songs')
         track["download"](download_dir ='Songs', quality=track_formats.MP3_320, )
         bot.send_chat_action(dl.chat.id, action='upload_audio')
         bot.send_audio(dl.chat.id, open('Songs/'+ name + '.mp3', 'rb'))
@@ -401,6 +403,7 @@ def tbot():
             call_data = call.data
 
             if call.data == 'track' + str(call_data[5:]):
+                bot.send_chat_action(call.message.chat.id, action='typing')
                 song.option(int(call_data[5:]))
                 bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
                 try:
