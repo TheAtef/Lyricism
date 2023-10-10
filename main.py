@@ -65,9 +65,9 @@ class MyDeezer:
         name = track['info']['DATA']['SNG_TITLE'] 
         track["download"](download_dir ='Songs', quality=track_formats.MP3_320, )
         bot.send_chat_action(dl.chat.id, action='upload_audio')
-        bot.send_audio(dl.chat.id, open('Songs\\'+ name + '.mp3', 'rb'))
+        bot.send_audio(dl.chat.id, open('Songs/'+ name + '.mp3', 'rb'))
         try:
-            bot.send_document(dl.chat.id, open('Songs\\' + name +'.lrc', 'rb'))
+            bot.send_document(dl.chat.id, open('Songs/' + name +'.lrc', 'rb'))
         except:
             pass
 
