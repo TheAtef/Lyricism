@@ -5,6 +5,6 @@ googletrans-py
 pyTelegramBotAPI==4.10.0
 requests==2.28.1
 lyricy==1.4
-pydeezer==1.0.8
+pydeezer
 lxml
 regex
