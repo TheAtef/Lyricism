@@ -67,9 +67,9 @@ class MyDeezer:
             os.makedirs(r'\\Songs')
         track["download"](download_dir =r'Songs\\', quality=track_formats.MP3_320, )
         bot.send_chat_action(dl.chat.id, action='upload_audio')
-        bot.send_audio(dl.chat.id, open(r'Songs\\'+ name + '.mp3', 'rb'))
+        bot.send_audio(dl.chat.id, open(r'Songs'+ name + '.mp3', 'rb'))
         try:
-            bot.send_document(dl.chat.id, open('Songs/' + name +'.lrc', 'rb'))
+            bot.send_document(dl.chat.id, open(r'Songs' + name +'.lrc', 'rb'))
         except:
             pass
 
