@@ -65,7 +65,7 @@ class MyDeezer:
         name = track['info']['DATA']['SNG_TITLE'] 
         if not os.path.exists(r'Songs/'):
             os.makedirs(r'Songs/')
-        track["download"](download_dir =r'Songs/', quality=track_formats.MP3_320, )
+        track["download"](download_dir = r'Songs/', filename = name, quality=track_formats.MP3_320, )
         bot.send_chat_action(dl.chat.id, action='upload_audio')
         try:
             bot.send_audio(dl.chat.id, open(r'Songs/'+ name + '.mp3', 'rb'), timeout=10)
