@@ -34,7 +34,7 @@ def get_songs(name, from_lyric):
     global songs_matched
     songs_matched = dict()
     with requests.Session() as s:
-        for page in range(1,11):
+        for page in range(1,7):
             if from_lyric:
                 url = f'{BASE_LYRIC}{1}&q={name.strip()}'
             else: 
@@ -155,8 +155,8 @@ def get_songs_arabic(name):
     return markup
 
 def get_data_arabic(song_selected_ar):
-    photo_url = 'https://angartwork.anghcdn.co/?id=' + songs_matched_arabic[song_selected_ar][1]
-    lyrics_url = 'https://kalimat.anghami.com/lyrics/' + songs_matched_arabic[song_selected_ar][0]
+    photo_url = 'https://angartwork.anghcdn.co/?id=' + str(songs_matched_arabic[song_selected_ar][1])
+    lyrics_url = 'https://kalimat.anghami.com/lyrics/' + str(songs_matched_arabic[song_selected_ar][0])
     r = requests.get(lyrics_url, headers=headers)
     if r.status_code == 200:
         soup_ar = bs(r.content, 'lxml')
