@@ -12,7 +12,7 @@ from googletrans import Translator
 from server import server
 
 headers = {
-    'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
     }
 
 headers_ar = {
@@ -33,27 +33,31 @@ server()
 def get_songs(name, from_lyric):
     global songs_matched
     songs_matched = dict()
+    counter = 1
     with requests.Session() as s:
         for page in range(1,7):
             if from_lyric:
-                url = f'{BASE_LYRIC}{1}&q={name.strip()}'
+                url = f'{BASE_LYRIC}{page}&q={name.strip()}'
             else: 
                 url = f'{BASE_SONG}{page}&q={name.strip()}'
             r = s.get(url, headers=headers)
             if r.status_code == 200:
                 parsed_json = json.loads(r.text)
                 for hit in parsed_json['response']['sections'][0]['hits']:
-                    #song_name: [link, photo, album_photo]
-                    songs_matched[hit['result']['full_title'].replace('by', '-')] = [hit['result']['url'],
-                                                                                    hit['result']['song_art_image_url'],
-                                                                                    hit['result']['header_image_url']]
+                    #number: [full_title, link, photo, album_photo]
+                    songs_matched[str(counter)] = [hit['result']['full_title'].replace('by', '-'),
+                                        hit['result']['url'],
+                                        hit['result']['song_art_image_url'],
+                                        hit['result']['header_image_url']]
+                    counter += 1
     markup = get_songs_markup(0)
     return markup
 
 def get_songs_markup(current_index):
     markup = types.InlineKeyboardMarkup()
     for key in list(songs_matched.keys())[current_index:current_index+5]:
-        markup.row(types.InlineKeyboardButton(text=key,callback_data='selected'+key.split('-')[0]))
+        markup.row(types.InlineKeyboardButton(text=songs_matched[key][0],callback_data='selected' + key))
+        print(key.split('-')[0])
     if len(songs_matched.keys()) > 0 and current_index < 5:
         markup.row(types.InlineKeyboardButton(text='➡️', callback_data='right'))
     elif current_index >= 5 and current_index <= len(songs_matched.keys()) - current_index:
@@ -116,14 +120,15 @@ def get_album(link):
         try:
             album_tracks = soup_album.find('ol', class_= re.compile("^AlbumTracklist__Container"))
             if album_tracks != None:
-                for li in soup_album.find_all('li', class_=re.compile("^AlbumTracklist__Track")):
+                for i, li in enumerate(soup_album.find_all('li', class_=re.compile("^AlbumTracklist__Track"))):
                     x = li.get_text()
                     if re.search("\d", x) == None:
                         li.decompose()
                     if li.div.a != None:
-                        tracks[li.div.get_text()] = li.div.a['href']
+                        #Number : [name, link]
+                        tracks[str(i)] = [li.div.get_text(), li.div.a['href']]
                     else:
-                        tracks[li.div.get_text()] = link
+                        tracks[str(i)] = [li.div.get_text(), link]
         except AttributeError:
             pass
         return album_name, tracks 
@@ -266,21 +271,16 @@ def callback_data(call):
         if call.data.startswith('selected'):
             bot.send_chat_action(call.message.chat.id, action='typing')
             bot.delete_message(call.message.chat.id, call.message.message_id)
-            song_selected = ''
-            for key in list(songs_matched.keys()):
-                if key.startswith(call.data.removeprefix('selected')):
-                    song_selected = key
-                    break
-
-            lyrics = get_lyrics(songs_matched[song_selected][0])
-            lyricsfr = call.data.removeprefix('selected').strip() + ' | Lyrics:\n\n' + lyrics
+            song_selected = call.data.removeprefix('selected')
+            lyrics = get_lyrics(songs_matched[song_selected][1])
+            lyricsfr = songs_matched[song_selected][0].split('-')[0].strip() + ' | Lyrics:\n\n' + lyrics
             if len(lyricsfr) <= 1024:
-                bot.send_photo(call.message.chat.id, songs_matched[song_selected][1], caption=lyricsfr, reply_markup=get_info_markup(), reply_to_message_id=message_received.message_id)
+                bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], caption=lyricsfr, reply_markup=get_info_markup(), reply_to_message_id=message_received.message_id)
             elif len(lyricsfr) > 1024 and len(lyricsfr) <= 4096:
-                bot.send_photo(call.message.chat.id, songs_matched[song_selected][1], reply_to_message_id=message_received.message_id)
+                bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], reply_to_message_id=message_received.message_id)
                 bot.send_message(call.message.chat.id, lyricsfr, reply_markup= get_info_markup())
             elif len(lyricsfr) > 4096:
-                bot.send_photo(call.message.chat.id, songs_matched[song_selected][1], reply_to_message_id=message_received.message_id)
+                bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], reply_to_message_id=message_received.message_id)
                 for x in range(0, len(lyricsfr), 4096):
                     bot.send_message(chat_id=call.message.chat.id, text=lyricsfr[x:x+4096])
                 long_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text='About the song', callback_data='info_about'),
@@ -324,17 +324,17 @@ def callback_data(call):
 
         if call.data == 'info_about':
             bot.send_chat_action(call.message.chat.id, action='typing')
-            bot.send_message(chat_id=call.message.chat.id, text='About the song:\n' + get_about(songs_matched[song_selected][0]), reply_to_message_id=call.message.message_id)
+            bot.send_message(chat_id=call.message.chat.id, text='About the song:\n' + get_about(songs_matched[song_selected][1]), reply_to_message_id=call.message.message_id)
 
         if call.data == 'info_album':
             global tracks
             bot.send_chat_action(call.message.chat.id, action='typing')
-            album_text, tracks = get_album(songs_matched[song_selected][0])
+            album_text, tracks = get_album(songs_matched[song_selected][1])
             markup = types.InlineKeyboardMarkup()
             for track in tracks.keys():
-                markup.row(types.InlineKeyboardButton(text= track,callback_data='album' +  track.split('-')[0]))
-            markup.row(types.InlineKeyboardButton(text='Done',callback_data='click_done'))
-            bot.send_photo(chat_id=call.message.chat.id, photo=songs_matched[song_selected][2], caption= album_text, reply_markup=markup, reply_to_message_id=call.message.message_id)
+                markup.row(types.InlineKeyboardButton(text= tracks[track][0], callback_data='album' + track))
+            markup.row(types.InlineKeyboardButton(text='Done', callback_data='click_done'))
+            bot.send_photo(chat_id=call.message.chat.id, photo=songs_matched[song_selected][3], caption= album_text, reply_markup=markup, reply_to_message_id=call.message.message_id)
         
         if call.data == 'long_done':
             bot.delete_message(call.message.chat.id, call.message.message_id)
@@ -342,13 +342,9 @@ def callback_data(call):
         if call.data.startswith('album'):
             tracks = tracks
             bot.send_chat_action(call.message.chat.id, action='typing')
-            album_song_selected = ''
-            for key in list(tracks.keys()):
-                if key.startswith(call.data.removeprefix('album')):
-                    album_song_selected = key
-                    break
-            lyrics = get_lyrics(tracks[album_song_selected])
-            lyrics_alb = album_song_selected + ' | Lyrics:\n\n' + lyrics
+            album_song_selected = call.data.removeprefix('album')
+            lyrics = get_lyrics(tracks[album_song_selected][1])
+            lyrics_alb = tracks[album_song_selected][0] + ' | Lyrics:\n\n' + lyrics
             if len(lyrics_alb) > 4096:
                 for x in range(0, len(lyrics_alb), 4096):
                     bot.send_message(chat_id=call.message.chat.id, text=lyrics_alb[x:x+4096], reply_to_message_id=call.message.message_id)
