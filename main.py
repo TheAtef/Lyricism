@@ -433,7 +433,7 @@ async def callback_data(call):
             await bot.send_chat_action(call.message.chat.id, action='typing')
             album_az_selected = int(call.data.removeprefix('az_album'))
             if tracks_az[album_az_selected][1].startswith('https'):
-                r = requests.get(tracks_az[album_az_selected][1], headers=headers)
+                r = requests.get(tracks_az[album_az_selected][1], headers=headers_az)
                 if r.status_code == 200:
                     soup_az = bs(r.content, 'lxml')
                     lyrics_az = tracks_az[album_az_selected][0].split('-')[0].strip() + ' | Lyrics:\n\n' + soup_az.find('div', class_=None, id=None).text.strip()
@@ -446,8 +446,6 @@ async def callback_data(call):
                 lyrics_az = tracks_az[album_az_selected][0].split('-')[0].strip() + ' | Lyrics:\n\n' + tracks_az[album_az_selected][1].strip()
                 await bot.send_message(chat_id=call.message.chat.id, text=lyrics_az, reply_to_message_id=call.message.message_id)
                 
-                
-            
         if call.data == 'long_done':
             await bot.delete_message(call.message.chat.id, call.message.message_id)
         
