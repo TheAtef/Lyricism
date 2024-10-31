@@ -141,16 +141,19 @@ async def get_songs_az(name):
     counter = 1
     markup = types.InlineKeyboardMarkup()
     url = BASE_AZ + name.strip()
-    r = requests.post(url, headers=headers_ar)
+    r = requests.get(url, headers=headers)
     if r.status_code == 200:
-        print(r.text)
-        parsed_json = json.loads(r.text)
-        for song in parsed_json['songs']:
-            strip = song['autocomplete'].split('-')[0].strip().strip('\"')
-            songs_matched_az[str(counter)] = [f"{strip} - {song['autocomplete'].split('-')[1].strip()}", song['url']]
-            counter += 1
-        for key in list(songs_matched_az.keys()):
-            markup.row(types.InlineKeyboardButton(text=songs_matched_az[key][0], callback_data='az_selected' + key))
+        try:
+            parsed_json = json.loads(r.text)
+            for song in parsed_json['songs']:
+                strip = song['autocomplete'].split('-')[0].strip().strip('\"')
+                songs_matched_az[str(counter)] = [f"{strip} - {song['autocomplete'].split('-')[1].strip()}", song['url']]
+                counter += 1
+            for key in list(songs_matched_az.keys()):
+                markup.row(types.InlineKeyboardButton(text=songs_matched_az[key][0], callback_data='az_selected' + key))
+            except:
+                markup.row(types.InlineKeyboardButton(text='No results found', callback_data='ignore'))
+                raise Exception('I\'m so fucking done.')
             
     markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
                 types.InlineKeyboardButton(text='AZLyrics ✅', callback_data='az_search'),
