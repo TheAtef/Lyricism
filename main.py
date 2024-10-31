@@ -11,12 +11,18 @@ from datetime import datetime
 from googletrans import Translator
 from server import server
 
+
 headers = {
     'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
     }
 
 headers_ar = {
     'referer': 'https://kalimat.anghami.com/',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
+}
+
+headers_az = {
+    'referer': 'https://search.azlyrics.com/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
 }
 
@@ -27,10 +33,11 @@ BASE_AR = os.environ.get('BASE_AR')
 BASE_AZ = os.environ.get('BASE_AZ')
 CHATID = os.environ.get('CHATID')
 
+
 bot = AsyncTeleBot(API_KEY)
 
 server()
-    
+
 async def get_songs(name, from_lyric):
     global songs_matched
     songs_matched = dict()
@@ -64,7 +71,8 @@ async def get_songs_markup(current_index):
         markup.row(types.InlineKeyboardButton(text='⬅️', callback_data='left'), types.InlineKeyboardButton(text='➡️', callback_data='right'))
     elif len(songs_matched.keys()) != 0 and current_index >= 5:
         markup.row(types.InlineKeyboardButton(text='⬅️', callback_data='left'))
-        
+    if len(songs_matched.keys()) == 0:
+        markup.row(types.InlineKeyboardButton(text='No results found', callback_data='ignore')) 
     markup.row(types.InlineKeyboardButton(text='Genius ✅', callback_data='genius_search'),
                 types.InlineKeyboardButton(text='AZLyrics ☑️', callback_data='az_search'),
                 types.InlineKeyboardButton(text='أنغامي ☑️', callback_data='ar_search'))
@@ -141,7 +149,7 @@ async def get_songs_az(name):
     counter = 1
     markup = types.InlineKeyboardMarkup()
     url = BASE_AZ + name.strip()
-    r = requests.get(url, headers=headers)
+    r = requests.get(url, headers=headers_az)
     if r.status_code == 200:
         try:
             parsed_json = json.loads(r.text)
@@ -152,15 +160,14 @@ async def get_songs_az(name):
             for key in list(songs_matched_az.keys()):
                 markup.row(types.InlineKeyboardButton(text=songs_matched_az[key][0], callback_data='az_selected' + key))
         except:
-            markup.row(types.InlineKeyboardButton(text='No results found', callback_data='ignore'))
             raise Exception('I\'m so fucking done.')
-            
+    if counter - 1 == 0:
+        markup.row(types.InlineKeyboardButton(text='No results found', callback_data='ignore')) 
     markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
                 types.InlineKeyboardButton(text='AZLyrics ✅', callback_data='az_search'),
                 types.InlineKeyboardButton(text='أنغامي ☑️', callback_data='ar_search'))
     markup.row(types.InlineKeyboardButton(text='Close', callback_data='result_no'))
     return markup
-
 
 async def get_songs_arabic(name):
     global songs_matched_arabic
@@ -176,10 +183,10 @@ async def get_songs_arabic(name):
                 if song['lyrics'] == 1 and song['languageid'] == 1:
                     songs_matched_arabic[str(counter)] = [song['id'],  song['coverArt'], song['title'] + ' - ' + song['artist']]
                     counter += 1
-                
         for key in list(songs_matched_arabic.keys()):
             markup.row(types.InlineKeyboardButton(text=songs_matched_arabic[key][2], callback_data='ar_selected' + key))
-            
+    if counter - 1 == 0:
+        markup.row(types.InlineKeyboardButton(text='لم يتم العثور على نتائج', callback_data='ignore')) 
     markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
                 types.InlineKeyboardButton(text='AZLyrics ☑️', callback_data='az_search'),
                 types.InlineKeyboardButton(text='أنغامي ✅', callback_data='ar_search'))
@@ -200,7 +207,7 @@ async def get_data_arabic(song_selected_ar):
 
 async def get_data_az(song_selected_az):
     lyrics_url = (songs_matched_az[song_selected_az][1])
-    r = requests.get(lyrics_url, headers=headers)
+    r = requests.get(lyrics_url, headers=headers_az)
     global tracks_az
     tracks_az = dict()
     counter = 1
@@ -304,6 +311,9 @@ async def callback_data(call):
     global song_selected
     
     if call.message:
+        if call.data == 'ignore':
+            await bot.answer_callback_query(callback_query_id=call.id, text="No results found")
+
         if call.data == 'result_no':
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
             await bot.delete_message(chat_id=call.message.chat.id, message_id=message_received.message_id)
