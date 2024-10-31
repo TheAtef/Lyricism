@@ -20,9 +20,8 @@ headers_ar = {
     'referer': 'https://kalimat.anghami.com/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
 }
-
 headers_az = {
-    'referer': 'https://search.azlyrics.com/',
+    'Cookie': os.environ.get('COOKIE'),
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
 }
 
@@ -160,7 +159,7 @@ async def get_songs_az(name):
             for key in list(songs_matched_az.keys()):
                 markup.row(types.InlineKeyboardButton(text=songs_matched_az[key][0], callback_data='az_selected' + key))
         except:
-            raise Exception('I\'m so fucking done.')
+            pass
     if counter - 1 == 0:
         markup.row(types.InlineKeyboardButton(text='No results found', callback_data='ignore')) 
     markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
