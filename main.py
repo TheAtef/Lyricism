@@ -143,6 +143,7 @@ async def get_songs_az(name):
     url = BASE_AZ + name.strip()
     r = requests.post(url, headers=headers_ar)
     if r.status_code == 200:
+        print(r.text)
         parsed_json = json.loads(r.text)
         for song in parsed_json['songs']:
             strip = song['autocomplete'].split('-')[0].strip().strip('\"')
