@@ -1,6 +1,5 @@
 import os
 import time
-import telebot
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
 from bs4 import BeautifulSoup as bs
@@ -287,9 +286,17 @@ async def get_data_st(song_selected_st):
             'url': songs_matched_st[song_selected_st][4],
             'locale': 'en'
         }
-        requests.get(url_req, params=payload_req, headers=headers)
-        time.sleep(6)
-        return await get_data_st(song_selected_st)        
+        job = requests.get(url_req, params=payload_req, headers=headers)
+        job_id = json.loads(job.text)['jobId']
+        while True:
+            job_check = requests.get(f"https://www.songtell.com/api/status?id={job_id}", headers=headers)
+            job_checker = json.loads(job_check.text)[0]['status']
+            if job_checker == 'pending':
+                time.sleep(1)
+            elif job_checker == 'failed':  
+                return 'Sorry, couldn\'t find data.'
+            elif job_checker == 'completed':
+                return await get_data_st(song_selected_st)      
     
     
 async def chat(message):
