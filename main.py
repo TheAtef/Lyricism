@@ -1,4 +1,5 @@
 import os
+import time
 import telebot
 from telebot.async_telebot import AsyncTeleBot
 from telebot import types
@@ -19,17 +20,20 @@ headers = {
 headers_ar = {
     'referer': 'https://kalimat.anghami.com/',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
-}
+    }
+
 headers_az = {
     'Cookie': os.environ.get('COOKIE'),
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
-}
+    }
 
 API_KEY = os.environ.get('API_KEY')
 BASE_LYRIC = os.environ.get('BASE_LYRIC')
 BASE_SONG = os.environ.get('BASE_SONG')
 BASE_AR = os.environ.get('BASE_AR')
 BASE_AZ = os.environ.get('BASE_AZ')
+BASE_SONGTELL = os.environ.get('BASE_SONGTELL')
+BASE_SONGTELL_GET = os.environ.get('BASE_SONGTELL_GET')
 CHATID = os.environ.get('CHATID')
 
 
@@ -75,7 +79,7 @@ async def get_songs_markup(current_index):
     markup.row(types.InlineKeyboardButton(text='Genius ✅', callback_data='genius_search'),
                 types.InlineKeyboardButton(text='AZLyrics ☑️', callback_data='az_search'),
                 types.InlineKeyboardButton(text='أنغامي ☑️', callback_data='ar_search'))
-    
+    markup.row(types.InlineKeyboardButton(text='Songtell ☑️ (For songs meanings!)', callback_data='st_search'))
     markup.row(types.InlineKeyboardButton(text='Close', callback_data='result_no'))
     return markup
 
@@ -165,44 +169,9 @@ async def get_songs_az(name):
     markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
                 types.InlineKeyboardButton(text='AZLyrics ✅', callback_data='az_search'),
                 types.InlineKeyboardButton(text='أنغامي ☑️', callback_data='ar_search'))
+    markup.row(types.InlineKeyboardButton(text='Songtell ☑️ (For songs meanings!)', callback_data='st_search'))
     markup.row(types.InlineKeyboardButton(text='Close', callback_data='result_no'))
     return markup
-
-async def get_songs_arabic(name):
-    global songs_matched_arabic
-    songs_matched_arabic = dict()
-    counter = 1
-    markup = types.InlineKeyboardMarkup()
-    url = BASE_AR + name.strip()
-    r = requests.post(url, headers=headers_ar)
-    if r.status_code == 200:
-        parsed_json = json.loads(r.text)
-        for song in parsed_json['sections'][0]['data']:
-            if 'lyrics' in song and 'languageid' in song:
-                if song['lyrics'] == 1 and song['languageid'] == 1:
-                    songs_matched_arabic[str(counter)] = [song['id'],  song['coverArt'], song['title'] + ' - ' + song['artist']]
-                    counter += 1
-        for key in list(songs_matched_arabic.keys()):
-            markup.row(types.InlineKeyboardButton(text=songs_matched_arabic[key][2], callback_data='ar_selected' + key))
-    if counter - 1 == 0:
-        markup.row(types.InlineKeyboardButton(text='لم يتم العثور على نتائج', callback_data='ignore')) 
-    markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
-                types.InlineKeyboardButton(text='AZLyrics ☑️', callback_data='az_search'),
-                types.InlineKeyboardButton(text='أنغامي ✅', callback_data='ar_search'))
-    markup.row(types.InlineKeyboardButton(text='إغلاق', callback_data='result_no'))
-    return markup
-
-async def get_data_arabic(song_selected_ar):
-    photo_url = 'https://angartwork.anghcdn.co/?id=' + str(songs_matched_arabic[song_selected_ar][1])
-    lyrics_url = 'https://kalimat.anghami.com/lyrics/' + str(songs_matched_arabic[song_selected_ar][0])
-    r = requests.get(lyrics_url, headers=headers)
-    if r.status_code == 200:
-        soup_ar = bs(r.content, 'lxml')
-        try:
-            lyrics = songs_matched_arabic[song_selected_ar][2].split('-')[0].strip() + ' | كلمات:\n\n' + soup_ar.find('pre', class_=re.compile("^lyrics-body")).text
-        except AttributeError:
-            lyrics = songs_matched_arabic[song_selected_ar][2].split('-')[0].strip() + ' | كلمات:\n\n' + soup_ar.find('h4', class_=re.compile("^error-page")).text
-        return photo_url, lyrics
 
 async def get_data_az(song_selected_az):
     lyrics_url = (songs_matched_az[song_selected_az][1])
@@ -227,6 +196,102 @@ async def get_data_az(song_selected_az):
                 counter+=1
     return photo_url, lyrics
 
+async def get_songs_arabic(name):
+    global songs_matched_arabic
+    songs_matched_arabic = dict()
+    counter = 1
+    markup = types.InlineKeyboardMarkup()
+    url = BASE_AR + name.strip()
+    r = requests.post(url, headers=headers_ar)
+    if r.status_code == 200:
+        parsed_json = json.loads(r.text)
+        for song in parsed_json['sections'][0]['data']:
+            if 'lyrics' in song and 'languageid' in song:
+                if song['lyrics'] == 1 and song['languageid'] == 1:
+                    songs_matched_arabic[str(counter)] = [song['id'],  song['coverArt'], song['title'] + ' - ' + song['artist']]
+                    counter += 1
+        for key in list(songs_matched_arabic.keys()):
+            markup.row(types.InlineKeyboardButton(text=songs_matched_arabic[key][2], callback_data='ar_selected' + key))
+    if counter - 1 == 0:
+        markup.row(types.InlineKeyboardButton(text='لم يتم العثور على نتائج', callback_data='ignore')) 
+    markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
+                types.InlineKeyboardButton(text='AZLyrics ☑️', callback_data='az_search'),
+                types.InlineKeyboardButton(text='أنغامي ✅', callback_data='ar_search'))
+    markup.row(types.InlineKeyboardButton(text='Songtell ☑️ (For songs meanings!)', callback_data='st_search'))
+    markup.row(types.InlineKeyboardButton(text='إغلاق', callback_data='result_no'))
+    return markup
+
+async def get_data_arabic(song_selected_ar):
+    photo_url = 'https://angartwork.anghcdn.co/?id=' + str(songs_matched_arabic[song_selected_ar][1])
+    lyrics_url = 'https://kalimat.anghami.com/lyrics/' + str(songs_matched_arabic[song_selected_ar][0])
+    r = requests.get(lyrics_url, headers=headers)
+    if r.status_code == 200:
+        soup_ar = bs(r.content, 'lxml')
+        try:
+            lyrics = songs_matched_arabic[song_selected_ar][2].split('-')[0].strip() + ' | كلمات:\n\n' + soup_ar.find('pre', class_=re.compile("^lyrics-body")).text
+        except AttributeError:
+            lyrics = songs_matched_arabic[song_selected_ar][2].split('-')[0].strip() + ' | كلمات:\n\n' + soup_ar.find('h4', class_=re.compile("^error-page")).text
+        return photo_url, lyrics
+
+async def get_songs_st(name):
+    global songs_matched_st
+    songs_matched_st = dict()
+    counter = 1
+    markup = types.InlineKeyboardMarkup()
+    url = BASE_SONGTELL + name.strip()
+    r = requests.get(url, headers=headers)
+    if r.status_code == 200:
+        try:
+            parsed_json = json.loads(r.text)
+            for song in parsed_json['pageProps']['searchResults']:
+                title = song['full_title'].replace('by', '-').strip()
+                songs_matched_st[str(counter)] = [title, song['artist_names'], song['title'], song['id'], song['url']]
+                counter += 1
+            for key in list(songs_matched_st.keys()):
+                markup.row(types.InlineKeyboardButton(text=songs_matched_st[key][0], callback_data='st_selected' + key))
+        except:
+            pass
+    if counter - 1 == 0:
+        markup.row(types.InlineKeyboardButton(text='No results found', callback_data='ignore')) 
+    markup.row(types.InlineKeyboardButton(text='Genius ☑️', callback_data='genius_search'),
+                types.InlineKeyboardButton(text='AZLyrics ☑️', callback_data='az_search'),
+                types.InlineKeyboardButton(text='أنغامي ☑️', callback_data='ar_search'))
+    markup.row(types.InlineKeyboardButton(text='Songtell ✅ (For songs meanings!)', callback_data='st_search'))
+    markup.row(types.InlineKeyboardButton(text='Close', callback_data='result_no'))
+    return markup
+    
+async def get_data_st(song_selected_st):
+    url = 'https://www.songtell.com/api/has-meaning'
+    payload = {
+        'artist_name': songs_matched_st[song_selected_st][1],
+        'song_name': songs_matched_st[song_selected_st][2],
+        'language': 'en'
+    }
+    r = requests.get(url, params=payload, headers=headers)
+    if r.status_code == 200:
+        parsed_json = json.loads(r.text)
+        if parsed_json['success'] == True:
+            artist_slug = parsed_json['artist_slug'].strip()
+            song_slug = parsed_json['song_slug'].strip()
+            rq = requests.get(f"{BASE_SONGTELL_GET}{artist_slug}/{song_slug}.json", headers=headers)
+            if r.status_code == 200:
+                parsed_json = json.loads(rq.text)
+                meaning = songs_matched_st[song_selected_st][2] + ' | Meaning:\n\n' + parsed_json['pageProps']['meaning']
+                return meaning
+    else:
+        url_req = 'https://hetzner.songtell.com/api/queue-meaning'
+        payload_req = {
+            'artist': songs_matched_st[song_selected_st][1],
+            'title': songs_matched_st[song_selected_st][2],
+            'genius_id': songs_matched_st[song_selected_st][3],
+            'url': songs_matched_st[song_selected_st][4],
+            'locale': 'en'
+        }
+        requests.get(url_req, params=payload_req, headers=headers)
+        time.sleep(6)
+        return await get_data_st(song_selected_st)        
+    
+    
 async def chat(message):
     userId = message.chat.id
     nameUser = str(message.chat.first_name) + ' ' + str(message.chat.last_name)
@@ -372,6 +437,10 @@ async def callback_data(call):
             markup = await get_songs_arabic(message_received.text)
             await bot.edit_message_text('اختر الأغنية:', call.message.chat.id, call.message.message_id, reply_markup=markup)
 
+        if call.data == 'st_search':
+            markup = await get_songs_st(message_received.text)
+            await bot.edit_message_text('Choose your song:', call.message.chat.id, call.message.message_id, reply_markup=markup)
+            
         if call.data.startswith('ar_selected'):
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
             await bot.send_chat_action(call.message.chat.id, action='typing')
@@ -386,6 +455,17 @@ async def callback_data(call):
                 await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=message_received.message_id)
                 for x in range(0, len(lyrics_ar), 4096):
                     await bot.send_message(chat_id=call.message.chat.id, text=lyrics_ar[x:x+4096])
+                    
+        if call.data.startswith('st_selected'):
+            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+            await bot.send_chat_action(call.message.chat.id, action='typing')
+            song_selected_st = call.data.removeprefix('st_selected')
+            meaning = await get_data_st(song_selected_st)
+            if len(meaning) <= 4096:
+                await bot.send_message(call.message.chat.id, text=meaning, reply_to_message_id=message_received.message_id)
+            elif len(meaning) > 4096:
+                for x in range(0, len(meaning), 4096):
+                    await bot.send_message(chat_id=call.message.chat.id, text=meaning[x:x+4096])
         
         if call.data.startswith('az_selected'):
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
