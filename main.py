@@ -580,6 +580,6 @@ print('Bot is running...')
 import asyncio
 while True:
     try:
-        asyncio.run(bot.infinity_polling())
+        asyncio.run(bot.infinity_polling(timeout=600, request_timeout=600))
     except:
         asyncio.sleep(10)
