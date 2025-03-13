@@ -21,11 +21,6 @@ headers_ar = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
     }
 
-headers_az = {
-    'Cookie': os.environ.get('COOKIE'),
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
-    }
-
 API_KEY = os.environ.get('API_KEY')
 BASE_LYRIC = os.environ.get('BASE_LYRIC')
 BASE_SONG = os.environ.get('BASE_SONG')
@@ -34,7 +29,6 @@ BASE_AZ = os.environ.get('BASE_AZ')
 BASE_SONGTELL = os.environ.get('BASE_SONGTELL')
 BASE_SONGTELL_GET = os.environ.get('BASE_SONGTELL_GET')
 CHATID = os.environ.get('CHATID')
-
 
 bot = AsyncTeleBot(API_KEY)
 
@@ -151,7 +145,7 @@ async def get_songs_az(name):
     counter = 1
     markup = types.InlineKeyboardMarkup()
     url = BASE_AZ + name.strip()
-    r = requests.get(url, headers=headers_az)
+    r = requests.get(url, headers=headers)
     if r.status_code == 200:
         try:
             parsed_json = json.loads(r.text)
@@ -174,7 +168,7 @@ async def get_songs_az(name):
 
 async def get_data_az(song_selected_az):
     lyrics_url = (songs_matched_az[song_selected_az][1])
-    r = requests.get(lyrics_url, headers=headers_az)
+    r = requests.get(lyrics_url, headers=headers)
     global tracks_az
     tracks_az = dict()
     counter = 1
@@ -337,8 +331,6 @@ async def from_lyric(message):
         smsg = "Write the command with the lyrics you remember to find the song.\nExample:\n/from_lyric yesterday I woke up sucking a lemon"
         await bot.reply_to(message, smsg)
     else:
-        global message_received
-        message_received = message
         await bot.send_message(message.chat.id, 'Choose your song:', reply_markup= await get_songs(message.text.removeprefix('/from_lyric '), True), reply_to_message_id=message.message_id)
 
 @bot.message_handler(commands=['lrc'])
@@ -349,9 +341,7 @@ async def lrc(message):
         smsg = "Write the command with the name of the song which you want the .lrc file for.\nExample:\n/lrc exit music"
         await bot.reply_to(message, smsg)
     else:
-        global message_received
         global lrc_files
-        message_received = message
         lrc_files = []
         ly = Lyricy()
         results = ly.search(message.text.removeprefix('/lrc '))
@@ -368,8 +358,6 @@ async def lrc(message):
 
 @bot.message_handler(commands=None)
 async def reply(message):
-    global message_received
-    message_received = message
     await bot.send_chat_action(message.chat.id, action='typing')
     await bot.send_message(message.chat.id, 'Choose your song:', reply_markup= await get_songs(message.text, False), reply_to_message_id=message.message_id)
     await chat(message)
@@ -387,7 +375,7 @@ async def callback_data(call):
 
         if call.data == 'result_no':
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            await bot.delete_message(chat_id=call.message.chat.id, message_id=message_received.message_id)
+            await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.reply_to_message.message_id)
 
         if call.data.startswith('lrc'):
             result = lrc_files[int(call.data.removeprefix('lrc'))]
@@ -397,7 +385,7 @@ async def callback_data(call):
                 f.write(result.lyrics)
             await bot.send_chat_action(call.message.chat.id, "upload_document")
             await bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
-            await bot.send_document(call.message.chat.id, open(lrc_name, 'rb'), message_received.message_id)
+            await bot.send_document(call.message.chat.id, open(lrc_name, 'rb'), call.message.reply_to_message.message_id)
 
         if call.data.startswith('selected'):
             await bot.send_chat_action(call.message.chat.id, action='typing')
@@ -406,12 +394,12 @@ async def callback_data(call):
             lyrics = await get_lyrics(songs_matched[song_selected][1])
             lyricsfr = songs_matched[song_selected][0].split('-')[0].strip() + ' | Lyrics:\n\n' + lyrics
             if len(lyricsfr) <= 1024:
-                await bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], caption=lyricsfr, reply_markup= await get_info_markup(), reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], caption=lyricsfr, reply_markup= await get_info_markup(), reply_to_message_id=call.message.reply_to_message.message_id)
             elif len(lyricsfr) > 1024 and len(lyricsfr) <= 4096:
-                await bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], reply_to_message_id=call.message.reply_to_message.message_id)
                 await bot.send_message(call.message.chat.id, lyricsfr, reply_markup= await  get_info_markup())
             elif len(lyricsfr) > 4096:
-                await bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, songs_matched[song_selected][2], reply_to_message_id=call.message.reply_to_message.message_id)
                 for x in range(0, len(lyricsfr), 4096):
                     await bot.send_message(chat_id=call.message.chat.id, text=lyricsfr[x:x+4096])
                 long_markup = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text='About the song', callback_data='info_about'),
@@ -433,19 +421,19 @@ async def callback_data(call):
             await bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=markup)
 
         if call.data == 'genius_search':
-            markup = await get_songs(message_received.text, False)
+            markup = await get_songs(call.message.reply_to_message.text, False)
             await bot.edit_message_text('Choose your song:', call.message.chat.id, call.message.message_id, reply_markup=markup)
         
         if call.data == 'az_search':
-            markup = await get_songs_az(message_received.text)
+            markup = await get_songs_az(call.message.reply_to_message.text)
             await bot.edit_message_text('Choose your song:', call.message.chat.id, call.message.message_id, reply_markup=markup)
         
         if call.data == 'ar_search':
-            markup = await get_songs_arabic(message_received.text)
+            markup = await get_songs_arabic(call.message.reply_to_message.text)
             await bot.edit_message_text('اختر الأغنية:', call.message.chat.id, call.message.message_id, reply_markup=markup)
 
         if call.data == 'st_search':
-            markup = await get_songs_st(message_received.text)
+            markup = await get_songs_st(call.message.reply_to_message.text)
             await bot.edit_message_text('Choose your song:', call.message.chat.id, call.message.message_id, reply_markup=markup)
             
         if call.data.startswith('ar_selected'):
@@ -454,12 +442,12 @@ async def callback_data(call):
             song_selected_ar = call.data.removeprefix('ar_selected')
             photo, lyrics_ar = await get_data_arabic(song_selected_ar)
             if len(lyrics_ar) <= 1024:
-                await bot.send_photo(call.message.chat.id, photo, caption=lyrics_ar, reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, photo, caption=lyrics_ar, reply_to_message_id=call.message.reply_to_message.message_id)
             elif len(lyrics_ar) > 1024 and len(lyrics_ar) <= 4096:
-                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=call.message.reply_to_message.message_id)
                 await bot.send_message(call.message.chat.id, lyrics_ar)
             elif len(lyrics_ar) > 4096:
-                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=call.message.reply_to_message.message_id)
                 for x in range(0, len(lyrics_ar), 4096):
                     await bot.send_message(chat_id=call.message.chat.id, text=lyrics_ar[x:x+4096])
                     
@@ -469,7 +457,7 @@ async def callback_data(call):
             song_selected_st = call.data.removeprefix('st_selected')
             meaning = await get_data_st(song_selected_st)
             if len(meaning) <= 4096:
-                await bot.send_message(call.message.chat.id, text=meaning, reply_to_message_id=message_received.message_id)
+                await bot.send_message(call.message.chat.id, text=meaning, reply_to_message_id=call.message.reply_to_message.message_id)
             elif len(meaning) > 4096:
                 for x in range(0, len(meaning), 4096):
                     await bot.send_message(chat_id=call.message.chat.id, text=meaning[x:x+4096])
@@ -482,12 +470,12 @@ async def callback_data(call):
             markup_az = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text='Album tracklist', callback_data='info_album_az')],
                                                     [types.InlineKeyboardButton(text='Done', callback_data='click_done')]])
             if len(lyrics_az) <= 1024:
-                await bot.send_photo(call.message.chat.id, photo, caption=lyrics_az, reply_markup=markup_az, reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, photo, caption=lyrics_az, reply_markup=markup_az, reply_to_message_id=call.message.reply_to_message.message_id)
             elif len(lyrics_az) > 1024 and len(lyrics_az) <= 4096:
-                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=call.message.reply_to_message.message_id)
                 await bot.send_message(call.message.chat.id, lyrics_az, reply_markup=markup_az)
             elif len(lyrics_az) > 4096:
-                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=message_received.message_id)
+                await bot.send_photo(call.message.chat.id, photo, reply_to_message_id=call.message.reply_to_message.message_id)
                 for x in range(0, len(lyrics_az), 4096):
                     await bot.send_message(chat_id=call.message.chat.id, text=lyrics_az[x:x+4096])
                 long_markup_az = types.InlineKeyboardMarkup([[types.InlineKeyboardButton(text='Album tracklist', callback_data='info_album_az')],
