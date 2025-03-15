@@ -11,6 +11,7 @@ from datetime import datetime
 import cloudscraper
 from googletrans import Translator
 from server import server
+server()
 
 headers = {
     'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
@@ -26,8 +27,6 @@ BASE_SONGTELL_GET = os.environ.get('BASE_SONGTELL_GET')
 CHATID = os.environ.get('CHATID')
 
 bot = AsyncTeleBot(API_KEY)
-
-server()
 
 async def get_songs(name, from_lyric):
     global songs_matched
@@ -268,7 +267,7 @@ async def get_data_st(song_selected_st):
                 meaning = songs_matched_st[song_selected_st][2] + ' | Meaning:\n\n' + parsed_json['pageProps']['meaning']
                 return meaning
     else:
-        url_req = 'https://hetzner.songtell.com/api/queue-meaning'
+        url_req = 'https://songtell.com/api/queue-meaning'
         payload_req = {
             'artist': songs_matched_st[song_selected_st][1],
             'title': songs_matched_st[song_selected_st][2],
@@ -278,8 +277,13 @@ async def get_data_st(song_selected_st):
         }
         job = requests.get(url_req, params=payload_req, headers=headers)
         job_id = json.loads(job.text)['jobId']
+        payload_status = {
+            'id': job_id,
+            'artist_name': songs_matched_st[song_selected_st][1],
+            'song_name': songs_matched_st[song_selected_st][2]
+        }
         while True:
-            job_check = requests.get(f"https://www.songtell.com/api/status?id={job_id}", headers=headers)
+            job_check = requests.get(f"https://www.songtell.com/api/status", params=payload_status, headers=headers)
             job_checker = json.loads(job_check.text)[0]['status']
             if job_checker == 'pending':
                 time.sleep(1)
