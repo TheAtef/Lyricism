@@ -8,18 +8,13 @@ import requests
 import json
 import re
 from datetime import datetime
+import cloudscraper
 from googletrans import Translator
 from server import server
 
-
 headers = {
     'User-Agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
-    }
-
-headers_ar = {
-    'referer': 'https://kalimat.anghami.com/',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
-    }
+}
 
 API_KEY = os.environ.get('API_KEY')
 BASE_LYRIC = os.environ.get('BASE_LYRIC')
@@ -191,11 +186,12 @@ async def get_data_az(song_selected_az):
 
 async def get_songs_arabic(name):
     global songs_matched_arabic
+    scraper = cloudscraper.create_scraper()
     songs_matched_arabic = dict()
     counter = 1
     markup = types.InlineKeyboardMarkup()
     url = BASE_AR + name.strip()
-    r = requests.post(url, headers=headers_ar)
+    r = scraper.get(url)
     if r.status_code == 200:
         parsed_json = json.loads(r.text)
         for song in parsed_json['sections'][0]['data']:
@@ -508,7 +504,7 @@ async def callback_data(call):
             await bot.send_chat_action(call.message.chat.id, action='typing')
             album_az_selected = int(call.data.removeprefix('az_album'))
             if tracks_az[album_az_selected][1].startswith('https'):
-                r = requests.get(tracks_az[album_az_selected][1], headers=headers_az)
+                r = requests.get(tracks_az[album_az_selected][1], headers=headers)
                 if r.status_code == 200:
                     soup_az = bs(r.content, 'lxml')
                     lyrics_az = tracks_az[album_az_selected][0].split('-')[0].strip() + ' | Lyrics:\n\n' + soup_az.find('div', class_=None, id=None).text.strip()
